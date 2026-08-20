@@ -55,7 +55,7 @@ from src.fastboot import (
 logger = logging.getLogger(__name__)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-STYLESHEET_PATH = SCRIPT_DIR / "res" / "qt.css"
+STYLESHEET_PATH = SCRIPT_DIR / "src" / "qt.css"
 
 
 def loadStylesheet(path: Path) -> str:
