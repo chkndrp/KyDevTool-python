@@ -33,6 +33,7 @@ by the manufacturer. Archive the contents please
 ## Requirements
 - Python 3.10 or newer
 - Installed `PyQt6`, `pyqt6_sip` pip packages
+- `fastboot` binary in system PATH
 
 ## Disclaimer
 This project is not affiliated or associated with Orange Pi, Shenzhen Xunlong Software Co., Ltd., or SpacemiT
