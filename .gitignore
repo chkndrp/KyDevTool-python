@@ -1,0 +1,8 @@
+factory/partition_universal.json
+
+__pycache__/
+
+*.zip
+*.img
+*.tar
+*.tar.gz
