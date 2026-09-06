@@ -56,7 +56,7 @@ def getFastbootDevices() -> list[str]:
     for line in res.stdout.strip().splitlines():
         parts = line.strip().split()
 
-        if len(parts) >= 2 and parts[1] in {"fastboot", "device"}:
+        if parts and not parts[0].startswith("?"):
             devices.append(parts[0])
 
     return devices
