@@ -56,7 +56,7 @@ def getFastbootDevices() -> list[str]:
     for line in res.stdout.strip().splitlines():
         parts = line.strip().split()
 
-        if parts and not parts[0].startswith("?"):
+        if parts and "permissions" not in line.lower():
             devices.append(parts[0])
 
     return devices
@@ -90,7 +90,7 @@ class FastbootFlasher:
 
         cmd = [self.OPTIONS.FASTBOOT_BIN, "--force"]
 
-        if self.OPTIONS.DEVICE_SERIAL:
+        if self.OPTIONS.DEVICE_SERIAL and not self.OPTIONS.DEVICE_SERIAL.startswith("?"):
             cmd.extend(["-s", self.OPTIONS.DEVICE_SERIAL])
 
         cmd.extend(args)
@@ -182,7 +182,44 @@ class FastbootFlasher:
         )
 
         start = time.time()
-        cmd = self.fbCmd("devices")
+        cmd = [self.OPTIONS.FASTBOOT_BIN, "devices"]
+        old_serial = self.OPTIONS.DEVICE_SERIAL
+
+        res_init = subprocess.run(cmd,
+            capture_output=True,
+            encoding="utf-8",
+            check=False,
+            text=True,
+        )
+
+        other_devices = {
+            line.strip().split()[0]
+            for line in res_init.stdout.splitlines()
+            if line.strip() and "permissions" not in line.lower()
+        } - {old_serial}
+
+        if old_serial:
+            while time.time() - start < timeout:
+                if self.STOP_REQUESTED:
+                    return False
+
+                res = subprocess.run(cmd,
+                    capture_output=True,
+                    encoding="utf-8",
+                    check=False,
+                    text=True,
+                )
+
+                current = {
+                    line.strip().split()[0]
+                    for line in res.stdout.splitlines()
+                    if line.strip() and "permissions" not in line.lower()
+                }
+
+                if old_serial not in current:
+                    break
+
+                time.sleep(0.1)
 
         while time.time() - start < timeout:
             if self.STOP_REQUESTED:
@@ -195,11 +232,21 @@ class FastbootFlasher:
                 text=True,
             )
 
-            if self.OPTIONS.DEVICE_SERIAL:
-                if any(line.startswith(self.OPTIONS.DEVICE_SERIAL)
-                       for line in res.stdout.splitlines()):
-                    return True
-            elif res.stdout.strip():
+            current = {
+                line.strip().split()[0]
+                for line in res.stdout.splitlines()
+                if line.strip() and "permissions" not in line.lower()
+            }
+
+            new_serials = current - other_devices
+            if new_serials:
+                new_serial = next(iter(new_serials))
+                if new_serial.startswith("?"):
+                    self.log(
+                        f"[Info] Re-enumerated device found: {new_serial}",
+                        "#F59E0B"
+                    )
+                self.OPTIONS.DEVICE_SERIAL = new_serial
                 return True
 
             time.sleep(0.5)
@@ -225,20 +272,19 @@ class FastbootFlasher:
             )
             mapping = {
                 "bootinfo": f"factory/{bootinfo_name}",
-                "emmc": str(self.OPTIONS.IMAGE_PATH),
+                "emmc": self.OPTIONS.IMAGE_PATH.name,
             }
 
-            with open(json_path, "r+", encoding="utf-8") as f:
+            with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-                for part in data.get("partitions", []):
-                    if name := part.get("name"):
-                        if name in mapping:
-                            part["image"] = mapping[name]
+            for part in data.get("partitions", []):
+                if name := part.get("name"):
+                    if name in mapping:
+                        part["image"] = mapping[name]
 
-                f.seek(0)
+            with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4)
-                f.truncate()
 
             return True
         except (OSError, json.JSONDecodeError) as e:
@@ -326,62 +372,64 @@ class FastbootFlasher:
             steps = [
                 (
                     "Staging FSBL",
-                    self.fbCmd("stage", str(factory / "FSBL.bin")),
+                    ["stage", str(factory / "FSBL.bin")],
                     1.5,
                 ),
                 (
                     "Booting FSBL",
-                    self.fbCmd("continue"),
+                    ["continue"],
                     0.0,
                 ),
                 (
                     "Staging U-Boot",
-                    self.fbCmd("stage", str(factory / "u-boot.itb")),
+                    ["stage", str(factory / "u-boot.itb")],
                     1.5,
                 ),
                 (
                     "Booting U-Boot",
-                    self.fbCmd("continue"),
+                    ["continue"],
                     0.0,
                 ),
                 (
                     "Flashing GPT",
-                    self.fbCmd("flash", "gpt", str(json_path)),
+                    ["flash", "gpt", str(json_path)],
                     0.5,
                 ),
                 (
                     "Flashing BootInfo",
-                    self.fbCmd("flash", "bootinfo", str(bootinfo_file)),
+                    ["flash", "bootinfo", str(bootinfo_file)],
                     0.5,
                 ),
                 (
                     "Flashing FSBL",
-                    self.fbCmd("flash", "fsbl", str(factory / "FSBL.bin")),
+                    ["flash", "fsbl", str(factory / "FSBL.bin")],
                     0.5,
                 ),
                 (
                     "Flashing System Image",
-                    self.fbCmd("flash", "emmc", str(self.OPTIONS.IMAGE_PATH)),
+                    ["flash", "emmc", str(self.OPTIONS.IMAGE_PATH)],
                     0.0,
                 ),
             ]
 
             if self.OPTIONS.REBOOT_AFTER_FLASH:
-                steps.append(("Rebooting Device", self.fbCmd("reboot"), 0.0))
+                steps.append(("Rebooting Device", ["reboot"], 0.0))
 
             total = len(steps)
 
-            for idx, (desc, cmd, step_delay) in enumerate(steps, start=1):
+            for idx, (desc, args, step_delay) in enumerate(steps, start=1):
                 if self.STOP_REQUESTED:
                     break
 
                 if self.OPTIONS.PROGRESS_CB:
                     self.OPTIONS.PROGRESS_CB(idx - 1, total)
 
+                cmd = self.fbCmd(*args)
+
                 if not self.runCmd(cmd, desc):
                     return False
 
-                if cmd and cmd[-1] == "continue":
+                if args and args[0] == "continue":
                     if not self.waitForDevice():
                         if not self.STOP_REQUESTED:
                             self.log(
