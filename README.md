@@ -10,6 +10,8 @@ This tool has been tested with the OrangePi `R2S`.
 It can practically work with the `RV2`/other boards as well but i can't guarantee that the `factory/` blobs
 are compatible
 
+Also, flashing custom OpenWRT builds may not be possible at the current state of `spacemit/ky` bringup
+
 ## How to use
 1. Install `python` requirements
 ```shell
@@ -22,9 +24,8 @@ python gui.py
 ```
 
 ## `Bootinfo`
-The original tool always flashes `bootinfo_sd.bin` no matter what board is connected. To me, that sounds kinda counter-productive 
-(as the `R2S` board doesn't have Micro SD Card slot) so i made `bootinfo_emmc.bin` the default. If that causes problems switch back 
-to `bootinfo_sd.bin`
+This partition is used to set the boot order for the target board. The original tool always flashes `bootinfo_sd.bin` no matter the board,
+but considering the `R2S` (for example) doesn't even have Micro SDCard slot, i set `bootinfo_emmc.bin` as the default.
 
 ## Original source
 The original tool can be found in [this shared google drive](https://drive.google.com/drive/folders/1gYQgScW-yQKJDVb23ym3kDw8F4_afjbM) 
