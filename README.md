@@ -27,9 +27,11 @@ python gui.py
 This partition is used to set the boot order for the target board. The original tool always flashes `bootinfo_sd.bin` no matter the board,
 but considering the `R2S` (for example) doesn't even have Micro SDCard slot, i set `bootinfo_emmc.bin` as the default.
 
-## Original source
+## Sources
 The original tool can be found in [this shared google drive](https://drive.google.com/drive/folders/1gYQgScW-yQKJDVb23ym3kDw8F4_afjbM) 
-by the manufacturer. Archive the contents please
+by the manufacturer.
+
+[I have uploaded the original tool to archive.org for redundancy here](https://archive.org/details/orangepi-r2s-rv2-ky-dev-tool)
 
 ## Requirements
 - Python 3.10 or newer
