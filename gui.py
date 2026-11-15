@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+"""QT6 GUI"""
+
 #  Python version of the KyDevTool flashing utility
 #  Copyright (C) 2026 chkndrp
 #

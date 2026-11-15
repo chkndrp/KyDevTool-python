@@ -1,3 +1,5 @@
+"""Fastboot utils"""
+
 #  Python version of the KyDevTool flashing utility
 #  Copyright (C) 2026 chkndrp
 #

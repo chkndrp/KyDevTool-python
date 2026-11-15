@@ -33,7 +33,6 @@ persistent=yes
 # no Warning level messages displayed, use "--disable=all --enable=classes
 # --disable=W".
 disable=too-many-instance-attributes,
-      missing-module-docstring,
       too-many-branches,
       no-name-in-module
 
