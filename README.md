@@ -34,8 +34,8 @@ by the manufacturer.
 [I have uploaded the original tool to archive.org for redundancy here](https://archive.org/details/orangepi-r2s-rv2-ky-dev-tool)
 
 ## Requirements
-- Python 3.10 or newer
-- Installed `PyQt6`, `pyqt6_sip` pip packages
+- Python 3.11 or newer
+- Installed `PyQt6`, `pyqt6_sip`, `darkdetect` pip packages
 - `fastboot` binary in system PATH
 
 ## Disclaimer

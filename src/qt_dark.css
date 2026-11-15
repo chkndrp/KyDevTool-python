@@ -1,0 +1,142 @@
+/*
+#  Python version of the KyDevTool flashing utility
+#  Copyright (C) 2026 chkndrp
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+QMainWindow {
+    background-color: #242424;
+}
+
+QWidget {
+    color: #ffffff;
+}
+
+QLabel {
+    background-color: #383838;
+    border: 1px solid #454545;
+    border-radius: 6px;
+}
+
+QGroupBox,
+QFrame {
+    background-color: #303030;
+    border: 1px solid #383838;
+}
+
+QLineEdit,
+QComboBox {
+    background-color: #383838;
+    border: 1px solid #454545;
+    color: #ffffff;
+}
+
+QLineEdit:focus,
+QComboBox:focus {
+    border-color: #3584e4;
+}
+
+QLineEdit:read-only {
+    background-color: #2a2a2a;
+    color: #9a9996;
+    border-color: #303030;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #303030;
+    color: #ffffff;
+    border: 1px solid #454545;
+}
+
+QPushButton {
+    background-color: #3584e4;
+    color: #ffffff;
+}
+
+QPushButton:hover {
+    background-color: #5294e8;
+}
+
+QPushButton:pressed {
+    background-color: #1c67c7;
+}
+
+QPushButton:disabled {
+    background-color: #303030;
+    color: #77767b;
+}
+
+QPushButton#browseBtn {
+    background-color: #383838;
+    color: #ffffff;
+    border: 1px solid #454545;
+}
+
+QPushButton#browseBtn:hover {
+    background-color: #454545;
+}
+
+QPushButton#browseBtn:pressed {
+    background-color: #303030;
+}
+
+QPushButton#stopBtn {
+    background-color: #e01b24;
+    color: #ffffff;
+}
+
+QPushButton#stopBtn:hover {
+    background-color: #f66151;
+}
+
+QPushButton#stopBtn:pressed {
+    background-color: #c01c28;
+}
+
+QProgressBar {
+    background-color: #383838;
+    color: #ffffff;
+}
+
+QProgressBar::chunk {
+    background-color: #3584e4;
+}
+
+QTextEdit {
+    background-color: #1e1e1e;
+    border: 1px solid #303030;
+    color: #c0bfbc;
+}
+
+QToolTip {
+    background-color: #303030;
+    color: #ffffff;
+    border: 1px solid #454545;
+}
+
+QCheckBox::indicator {
+    border: 1px solid #5a5a5a;
+    background-color: #383838;
+}
+
+QCheckBox::indicator:hover {
+    border-color: #77767b;
+    background-color: #454545;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #77767b;
+    border: 1px solid #77767b;
+}

@@ -21,19 +21,25 @@ import signal
 import sys
 
 from pathlib import Path
+from darkdetect import isDark
+
 from PyQt6.QtCore import (
     QThread,
     QTimer,
+    QPropertyAnimation,
     pyqtSignal,
+    Qt
 )
 
 from PyQt6.QtWidgets import (
     QApplication,
+    QGraphicsOpacityEffect,
     QCheckBox,
     QComboBox,
     QFileDialog,
     QFormLayout,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QMainWindow,
     QMessageBox,
@@ -42,6 +48,10 @@ from PyQt6.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
     QWidget,
+)
+
+from PyQt6.QtGui import (
+    QCloseEvent
 )
 
 from src.fastboot import (
@@ -55,16 +65,26 @@ from src.fastboot import (
 logger = logging.getLogger(__name__)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-STYLESHEET_PATH = SCRIPT_DIR / "src" / "qt.css"
+STYLESHEET_BASE_PATH = SCRIPT_DIR / "src" / "qt.css"
+STYLESHEET_DARK_PATH = SCRIPT_DIR / "src" / "qt_dark.css"
+STYLESHEET_LIGHT_PATH = SCRIPT_DIR / "src" / "qt_light.css"
 
 
-def loadStylesheet(path: Path) -> str:
-    """Load css file contents."""
+def loadStylesheet(is_dark: bool) -> str:
+    """Load base and theme css file contents."""
 
+    theme_path = STYLESHEET_DARK_PATH if is_dark else STYLESHEET_LIGHT_PATH
     try:
-        return path.read_text(encoding="utf-8")
+        base_css = STYLESHEET_BASE_PATH.read_text(
+            encoding="utf-8"
+        )
+        theme_css = theme_path.read_text(
+            encoding="utf-8"
+        )
+
+        return f"{base_css}\n{theme_css}"
     except OSError as e:
-        logger.warning("Could not load stylesheet from %s: %s", path, e)
+        logger.warning("Could not load stylesheet: %s", e)
         return ""
 
 
@@ -114,12 +134,19 @@ class FlasherWindow(QMainWindow):
 
         self.setWindowTitle("KyDevTool-python")
         self.resize(620, 420)
-        self.setStyleSheet(loadStylesheet(STYLESHEET_PATH))
+
+        self.CURRENT_IS_DARK: bool | None = None
+        self.applyTheme()
+
+        self.THEME_TIMER = QTimer(self)
+        self.THEME_TIMER.setInterval(2000)
+        self.THEME_TIMER.timeout.connect(self.applyTheme)
+        self.THEME_TIMER.start()
 
         self.IS_FLASHING = False
         self.WORKER: FlashWorker | None = None
         self.DEVICE_COMBO = QComboBox()
-        self.REFRESH_BTN =  QPushButton("Refresh")
+        self.REFRESH_BTN = QPushButton("Refresh")
         self.BOOTINFO_COMBO = QComboBox()
         self.IMAGE_EDIT = QLineEdit()
         self.IMAGE_BTN = QPushButton("Browse")
@@ -129,6 +156,41 @@ class FlasherWindow(QMainWindow):
         self.CONSOLE = QTextEdit()
 
         self.initUi()
+
+
+    def applyTheme(self):
+        """Apply stylesheet matching system theme"""
+
+        is_dark = bool(isDark())
+
+        if self.CURRENT_IS_DARK == is_dark:
+            return
+
+        first_run = self.CURRENT_IS_DARK is None
+        self.CURRENT_IS_DARK = is_dark
+
+        if first_run:
+            self.setStyleSheet(loadStylesheet(is_dark))
+            return
+
+        old_pixmap = self.grab()
+        self.setStyleSheet(loadStylesheet(is_dark))
+
+        overlay = QLabel(self)
+        overlay.setPixmap(old_pixmap)
+        overlay.setGeometry(self.rect())
+        overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        overlay.show()
+
+        effect = QGraphicsOpacityEffect(overlay)
+        overlay.setGraphicsEffect(effect)
+
+        anim = QPropertyAnimation(effect, b"opacity", self)
+        anim.setDuration(300)
+        anim.setStartValue(1.0)
+        anim.setEndValue(0.0)
+        anim.finished.connect(overlay.deleteLater)
+        anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
 
 
     def initUi(self):
@@ -160,10 +222,29 @@ class FlasherWindow(QMainWindow):
         img_layout.addWidget(self.IMAGE_EDIT)
         img_layout.addWidget(self.IMAGE_BTN)
 
-        form.addRow("Target Device:", dev_layout)
-        form.addRow("BootInfo Target:", self.BOOTINFO_COMBO)
-        form.addRow("System Image:", img_layout)
-        form.addRow("Advanced:", self.REBOOT_CHECKBOX)
+        checkbox_layout = QHBoxLayout()
+        checkbox_layout.setContentsMargins(0, 0, 0, 0)
+        checkbox_layout.addWidget(
+            self.REBOOT_CHECKBOX,
+            alignment=Qt.AlignmentFlag.AlignVCenter
+        )
+
+        label_width = 130
+        labels = [
+            QLabel("Target Device"),
+            QLabel("BootInfo Target"),
+            QLabel("System Image"),
+            QLabel("Advanced"),
+        ]
+
+        for lbl in labels:
+            lbl.setFixedWidth(label_width)
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        form.addRow(labels[0], dev_layout)
+        form.addRow(labels[1], self.BOOTINFO_COMBO)
+        form.addRow(labels[2], img_layout)
+        form.addRow(labels[3], checkbox_layout)
         layout.addWidget(form_frame)
 
         self.FLASH_BTN.setFixedHeight(40)
@@ -245,7 +326,8 @@ class FlasherWindow(QMainWindow):
                 self.FLASH_BTN.setObjectName("")
                 self.refreshDevices()
 
-        self.FLASH_BTN.setStyle(self.FLASH_BTN.style())
+        self.FLASH_BTN.style().unpolish(self.FLASH_BTN)
+        self.FLASH_BTN.style().polish(self.FLASH_BTN)
 
 
     def flashFinished(self, _success: bool):
@@ -281,6 +363,7 @@ class FlasherWindow(QMainWindow):
                 "#f6c177"
             )
             self.WORKER.stop()
+            self.WORKER.wait()
 
 
     def startFlash(self):
@@ -302,6 +385,14 @@ class FlasherWindow(QMainWindow):
             )
             return
 
+        bootinfo_path = SCRIPT_DIR / "factory" / self.BOOTINFO_COMBO.currentText()
+        if not bootinfo_path.is_file():
+            self.appendLog(
+                "[Error] BootInfo target file does not exist.",
+                "#eb6f92"
+            )
+            return
+
         self.CONSOLE.clear()
         self.PROGRESS_BAR.setValue(0)
         self.setUiFlashingState(True)
@@ -309,7 +400,7 @@ class FlasherWindow(QMainWindow):
         options = FlashOptions(
             IMAGE_PATH=image_path,
             TOOL_DIR=SCRIPT_DIR,
-            BOOTINFO_PATH=SCRIPT_DIR / "factory" / self.BOOTINFO_COMBO.currentText(),
+            BOOTINFO_PATH=bootinfo_path,
             FASTBOOT_BIN=FASTBOOT_BIN,
             DEVICE_SERIAL=device_serial,
             REBOOT_AFTER_FLASH=self.REBOOT_CHECKBOX.isChecked(),
@@ -319,7 +410,29 @@ class FlasherWindow(QMainWindow):
         self.WORKER.LOG_SIGNAL.connect(self.appendLog)
         self.WORKER.PROGRESS_SIGNAL.connect(self.updateProgress)
         self.WORKER.FINISHED_SIGNAL.connect(self.flashFinished)
+        self.WORKER.finished.connect(self.WORKER.deleteLater)
         self.WORKER.start()
+
+
+    def closeEvent(self, event: QCloseEvent):
+        """Handle window close event safely."""
+
+        if self.IS_FLASHING:
+            reply = QMessageBox.warning(
+                self,
+                "Flashing in Progress",
+                "A flash operation is active. Do you want to abort and exit?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.Yes and self.WORKER is not None:
+                self.WORKER.stop()
+                self.WORKER.wait()
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.accept()
 
 
 if __name__ == "__main__":
