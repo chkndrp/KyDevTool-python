@@ -65,9 +65,9 @@ from src.fastboot import (
 logger = logging.getLogger(__name__)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-STYLESHEET_BASE_PATH = SCRIPT_DIR / "src" / "qt.css"
-STYLESHEET_DARK_PATH = SCRIPT_DIR / "src" / "qt_dark.css"
-STYLESHEET_LIGHT_PATH = SCRIPT_DIR / "src" / "qt_light.css"
+STYLESHEET_BASE_PATH  = SCRIPT_DIR / "src" / "stylesheets" / "qt.css"
+STYLESHEET_DARK_PATH  = SCRIPT_DIR / "src" / "stylesheets" / "qt_dark.css"
+STYLESHEET_LIGHT_PATH = SCRIPT_DIR / "src" / "stylesheets" / "qt_light.css"
 
 
 def loadStylesheet(is_dark: bool) -> str:
